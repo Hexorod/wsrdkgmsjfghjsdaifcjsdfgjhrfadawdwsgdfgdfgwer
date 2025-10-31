@@ -28,7 +28,7 @@ input { width:100%; padding:10px; border-radius:8px; border:none; margin-bottom:
 .button-row { display:flex; gap:8px; justify-content:center; }
 .button-row button { background:#5a5aff; border:none; padding:7px 11px; border-radius:6px; color:white; cursor:pointer; font-size:14px; }
 .button-row button:hover { background:#7878ff; }
-.toggle-sidebar { position:absolute; top:50%; transform:translateY(-50%); background:#5a5aff; padding:8px; border-radius:0 8px 8px 0; cursor:pointer; font-size:18px; z-index:3; left:300px; transition:left 0.3s; }
+.toggle-sidebar { position:absolute; top:50%; transform:translateY(-50%); background:#5a5aff; padding:8px; border-radius:0 8px 8px 0; cursor:pointer; font-size:18px; z-index:3; left:362px; transition:left 0.3s; }
 .toggle-sidebar:hover { background:#7474ff; }
 .content { position:absolute; top:0; bottom:0; left:320px; right:0; transition:left 0.3s; }
 .content.full { left:0; }
@@ -63,7 +63,7 @@ let showOnlyFav = false;
 toggleBtn.onclick = () => {
   sidebar.classList.toggle("hidden");
   contentEl.classList.toggle("full");
-  toggleBtn.style.left = sidebar.classList.contains("hidden") ? "0" : "300px";
+  toggleBtn.style.left = sidebar.classList.contains("hidden") ? "0" : "362px";
   toggleBtn.textContent = sidebar.classList.contains("hidden") ? "❯" : "❮";
 };
 
