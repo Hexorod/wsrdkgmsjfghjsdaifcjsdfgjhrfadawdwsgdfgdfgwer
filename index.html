@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Google Classroom</title>
+<link rel="icon" href="https://www.google.com/images/branding/product/ico/classroom_64.ico">
+<style>
+body { margin:0; font-family:"Segoe UI",sans-serif; background:#0d0d1a; color:white; height:100vh; overflow:hidden; }
+.sidebar { width:320px; background:#14142b; padding:20px; display:flex; flex-direction:column; overflow-y:auto; border-right:2px solid #252550; position:absolute; top:0; left:0; bottom:0; transition: transform 0.3s ease; z-index:2; }
+.sidebar.hidden { transform:translateX(-100%); }
+.sidebar h1 { font-size:22px; margin-bottom:10px; text-shadow:0 0 10px #5a5aff; }
+input { width:100%; padding:10px; border-radius:8px; border:none; margin-bottom:10px; background:#1f1f3d; color:white; position:sticky; top:0; z-index:5; }
+.az-filter { display:flex; flex-wrap:wrap; gap:4px; margin-bottom:6px; position:sticky; top:50px; background:#14142b; padding-top:5px; z-index:4; }
+.az-filter button { background:#262650; border:none; padding:4px 7px; border-radius:4px; cursor:pointer; font-size:12px; color:white; }
+.az-filter button:hover { background:#4f4f9e; }
+#favBtn { background:#262650; border:none; border-radius:6px; padding:6px 0; margin:6px 0 10px 0; width:100%; cursor:pointer; font-size:14px; }
+#favBtn:hover { background:#4f4f9e; }
+#gamesContainer { flex:1; overflow-y:auto; scrollbar-width:none; margin-top:5px; }
+#gamesContainer::-webkit-scrollbar { display:none; }
+.game-card { background:#1b1b38; border-radius:12px; margin-bottom:15px; overflow:hidden; box-shadow:0 3px 10px rgba(0,0,0,.3); }
+.game-card img { width:100%; height:160px; object-fit:cover; }
+.game-info { padding:10px; text-align:center; }
+.game-title { font-size:16px; display:flex; justify-content:center; align-items:center; gap:6px; }
+.star { cursor:pointer; font-size:18px; color:gold; }
+.star.off { color:gray; }
+.button-row { display:flex; gap:8px; justify-content:center; }
+.button-row button { background:#5a5aff; border:none; padding:7px 11px; border-radius:6px; color:white; cursor:pointer; font-size:14px; }
+.button-row button:hover { background:#7878ff; }
+.toggle-sidebar { position:absolute; top:50%; transform:translateY(-50%); background:#5a5aff; padding:8px; border-radius:0 8px 8px 0; cursor:pointer; font-size:18px; z-index:3; left:300px; transition:left 0.3s; }
+.toggle-sidebar:hover { background:#7474ff; }
+.content { position:absolute; top:0; bottom:0; left:320px; right:0; transition:left 0.3s; }
+.content.full { left:0; }
+.content iframe { width:100%; height:100%; border:none; }
+
+/* Settings modal */
+#modalOverlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); display:none; z-index:10; }
+#settingsModal { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:#1b1b38; padding:20px; border-radius:12px; display:none; z-index:11; width:250px; text-align:center; }
+#settingsModal select { width:100%; padding:8px; margin:10px 0; border-radius:6px; border:none; background:#262650; color:white; }
+#settingsModal button { padding:7px 12px; border:none; border-radius:6px; background:#5a5aff; color:white; cursor:pointer; }
+#settingsModal button:hover { background:#7878ff; }
+#settingsBtn { background:#5a5aff; border:none; border-radius:6px; padding:6px 10px; color:white; cursor:pointer; margin-bottom:10px; }
+#settingsBtn:hover { background:#7878ff; }
+</style>
+</head>
+<body>
+
+<div class="sidebar" id="sidebar">
+  <h1>games bro</h1>
+  <h1 style="font-size:15px;">Press CTRL+Q (both of them at the same time) for panic key (switch to a different tab automatically) select them in settings</h1>
+  <button id="settingsBtn">Settings</button>
+  <input type="text" id="search" placeholder="Search games...">
+  <div class="az-filter" id="azFilter"></div>
+  <button id="favBtn" style="background-color: yellow; color: black;">★ Favorites</button>
+  <div id="gamesContainer">Loading games...</div>
+</div>
+
+<div class="toggle-sidebar" id="toggleBtn">❮</div>
+<div class="content" id="content"><p style="color:#aaa;">Select a game from the sidebar.</p></div>
+
+<!-- Settings modal -->
+<div id="modalOverlay"></div>
+<div id="settingsModal">
+  <h2>Settings</h2>
+  <label for="tabSelect">Choose redirect and tab cloak:</label>
+  <select id="tabSelect">
+    <option value="classroom">Google Classroom</option>
+    <option value="docs">Google Docs</option>
+    <option value="slides">Google Slides</option>
+  </select>
+  <button id="closeSettings">Save</button>
+</div>
+
+<script>
+const sidebarEl = document.getElementById("sidebar");
+const toggleBtnEl = document.getElementById("toggleBtn");
+const gamesContainerEl = document.getElementById("gamesContainer");
+const contentEl = document.getElementById("content");
+const favBtnEl = document.getElementById("favBtn");
+
+const settingsBtnEl = document.getElementById("settingsBtn");
+const settingsModalEl = document.getElementById("settingsModal");
+const modalOverlayEl = document.getElementById("modalOverlay");
+const tabSelectEl = document.getElementById("tabSelect");
+const closeSettingsEl = document.getElementById("closeSettings");
+
+let favorites = JSON.parse(localStorage.getItem("favorites") || "[]");
+let showOnlyFav = false;
+
+// Load tab setting or default
+tabSelectEl.value = localStorage.getItem("tabSetting") || "classroom";
+applyTabSettings();
+
+function applyTabSettings(){
+  const tab = tabSelectEl.value || "classroom";
+  let tabName="", faviconURL="";
+  switch(tab){
+    case "classroom": tabName="Google Classroom"; faviconURL="https://www.google.com/images/branding/product/ico/classroom_64.ico"; break;
+    case "docs": tabName="Google Docs"; faviconURL="https://www.google.com/images/branding/product/ico/docs_64.ico"; break;
+    case "slides": tabName="Google Slides"; faviconURL="https://www.google.com/images/branding/product/ico/slides_64.ico"; break;
+  }
+  document.title = tabName;
+  let link = document.querySelector("link[rel='icon']");
+  if(!link){ link = document.createElement("link"); link.rel="icon"; document.head.appendChild(link);}
+  link.href = faviconURL;
+}
+
+// Sidebar toggle
+toggleBtnEl.onclick = ()=>{
+  sidebarEl.classList.toggle("hidden");
+  contentEl.classList.toggle("full");
+  toggleBtnEl.style.left = sidebarEl.classList.contains("hidden") ? "0" : "300px";
+  toggleBtnEl.textContent = sidebarEl.classList.contains("hidden") ? "❯" : "❮";
+};
+
+// Settings modal
+settingsBtnEl.onclick = ()=>{
+  modalOverlayEl.style.display="block";
+  settingsModalEl.style.display="block";
+};
+closeSettingsEl.onclick = ()=>{
+  modalOverlayEl.style.display="none";
+  settingsModalEl.style.display="none";
+  localStorage.setItem("tabSetting", tabSelectEl.value);
+  applyTabSettings();
+};
+
+// CTRL+Q redirect
+document.addEventListener("keydown", e=>{
+  if(e.ctrlKey && e.key.toLowerCase()==="q"){
+    e.preventDefault();
+    const tab = localStorage.getItem("tabSetting") || "classroom";
+    switch(tab){
+      case "classroom": window.open("https://classroom.google.com","_blank"); break;
+      case "docs": window.open("https://docs.google.com","_blank"); break;
+      case "slides": window.open("https://slides.google.com","_blank"); break;
+    }
+  }
+});
+
+// Format filename
+function formatName(name){
+  return name.replace(".html","").replace(/^cl/,"").replace(/[-_]/g," ").replace(/([a-z])([A-Z])/g,"$1 $2").trim().replace(/^./,c=>c.toUpperCase());
+}
+
+// Fetch games
+async function fetchGames(){
+  try{
+    const res = await fetch("https://api.github.com/repos/Hexorod/adasdgtergscvbfr5etyrawdasdfegertawdA/git/trees/main?recursive=1");
+    const data = await res.json();
+    const files = data.tree.filter(f=>f.path.endsWith(".html"));
+    renderGames(files);
+    setupAZ(files);
+  }catch(err){
+    gamesContainerEl.innerHTML="<p style='color:red;'>Failed to load games.</p>";
+    console.error(err);
+  }
+}
+
+// Render games
+function renderGames(files, letter=null, search=""){
+  const img="https://pbs.twimg.com/media/Ggj70WPXcAAV1L9.jpg:small";
+  let list = files.filter(f=>{
+    const t=formatName(f.path);
+    if(letter && !t.toLowerCase().startsWith(letter)) return false;
+    if(showOnlyFav && !favorites.includes(f.path)) return false;
+    if(search && !t.toLowerCase().includes(search)) return false;
+    return true;
+  });
+  let html = list.map(f=>card(f,img,favorites.includes(f.path))).join("");
+  gamesContainerEl.innerHTML=html;
+  attach(files);
+}
+
+// Generate card
+function card(f,img,isFav){
+  return `<div class="game-card" data-path="${f.path}">
+    <img src="${img}">
+    <div class="game-info">
+      <div class="game-title">${formatName(f.path)}<span class="star ${isFav?"":"off"}">★</span></div>
+      <div class="button-row">
+        <button class="play-btn">Play</button>
+        <button class="full-btn">Fullscreen</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+// Attach events
+function attach(files){
+  document.querySelectorAll(".play-btn").forEach(b=>{
+    b.onclick=e=>{
+      const p=e.target.closest(".game-card").dataset.path;
+      const url="https://hexorod.github.io/adasdgtergscvbfr5etyrawdasdfegertawdA/"+p;
+      contentEl.innerHTML='<iframe src="'+url+'"></iframe>';
+    };
+  });
+  document.querySelectorAll(".full-btn").forEach(b=>{
+    b.onclick=e=>{
+      const p=e.target.closest(".game-card").dataset.path;
+      const url="https://hexorod.github.io/adasdgtergscvbfr5etyrawdasdfegertawdA/"+p;
+      window.open(url,"_blank");
+    };
+  });
+  document.querySelectorAll(".star").forEach(s=>{
+    s.onclick=e=>{
+      const p=e.target.closest(".game-card").dataset.path;
+      if(favorites.includes(p)){
+        favorites=favorites.filter(x=>x!==p);
+        e.target.classList.add("off");
+      }else{
+        favorites.push(p);
+        e.target.classList.remove("off");
+      }
+      localStorage.setItem("favorites",JSON.stringify(favorites));
+      renderGames(files,null,document.getElementById("search").value.toLowerCase());
+    };
+  });
+}
+
+// Setup A-Z & search
+function setupAZ(files){
+  const letters="ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+  document.getElementById("azFilter").innerHTML=`<button>All</button>`+letters.map(l=>`<button>${l}</button>`).join("");
+  document.querySelectorAll(".az-filter button").forEach(b=>{
+    b.onclick=()=>{
+      const l=b.textContent.toLowerCase();
+      renderGames(files,l==="all"?null:l,document.getElementById("search").value.toLowerCase());
+    };
+  });
+  document.getElementById("search").oninput=e=>{
+    renderGames(files,null,e.target.value.toLowerCase());
+  };
+  favBtnEl.onclick=()=>{
+    showOnlyFav=!showOnlyFav;
+    favBtnEl.style.background=showOnlyFav?"#5a5aff":"#262650";
+    renderGames(files,null,document.getElementById("search").value.toLowerCase());
+  };
+}
+
+// Init
+fetchGames();
+</script>
+</body>
+</html>
