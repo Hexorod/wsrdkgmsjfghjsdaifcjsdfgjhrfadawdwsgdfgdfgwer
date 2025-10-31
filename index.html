@@ -122,13 +122,33 @@ function card(f,img,isFav){
 
 // Attach events
 function attach(files){
-  document.querySelectorAll(".play-btn").forEach(b=>{
-    b.onclick=e=>{
-      const p=e.target.closest(".game-card").dataset.path;
-      const url="https://hexorod.github.io/adasdgtergscvbfr5etyrawdasdfegertawdA/"+p;
-      contentEl.innerHTML='<iframe src="'+url+'"></iframe>';
+  document.querySelectorAll(".full-btn").forEach(b=>{
+    b.onclick = e => {
+      const p = e.target.closest(".game-card").dataset.path;
+      const url = "https://hexorod.github.io/adasdgtergscvbfr5etyrawdasdfegertawdA/" + p;
+      
+      // Open about:blank tab
+      const newTab = window.open("about:blank", "_blank");
+  
+      // Wait for the tab to load then inject fullscreen iframe
+      newTab.document.write(`
+        <html>
+          <head>
+            <title>${formatName(p)}</title>
+            <style>
+              html, body { margin:0; padding:0; height:100%; overflow:hidden; background:#000; }
+              iframe { width:100%; height:100%; border:none; }
+            </style>
+          </head>
+          <body>
+            <iframe src="${url}" allowfullscreen></iframe>
+          </body>
+        </html>
+      `);
+      newTab.document.close();
     };
   });
+
   document.querySelectorAll(".full-btn").forEach(b=>{
     b.onclick=e=>{
       const p=e.target.closest(".game-card").dataset.path;
